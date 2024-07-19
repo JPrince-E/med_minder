@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyCp46Ip8zpEjTpJQ7U2_eMtO6x8s0AXO1E</string>
+	<key>GCM_SENDER_ID</key>
+	<string>724297011419</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.example.medMinder</string>
+	<key>PROJECT_ID</key>
+	<string>med-minder-b8b28</string>
+	<key>STORAGE_BUCKET</key>
+	<string>med-minder-b8b28.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:724297011419:ios:9d25fbe26ebac784abbcfe</string>
+</dict>
+</plist>
