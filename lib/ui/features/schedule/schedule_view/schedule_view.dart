@@ -3,8 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:med_minder/ui/features/schedule/schedule_controller/schedule_controller.dart';
 import 'package:med_minder/ui/shared/custom_appbar.dart';
+import 'package:med_minder/ui/shared/global_variables.dart';
 import 'package:med_minder/ui/shared/spacer.dart';
 import 'package:med_minder/utils/app_constants/app_colors.dart';
+import 'package:med_minder/utils/app_constants/app_key_strings.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 class ScheduleView extends StatefulWidget {
   const ScheduleView({super.key});
@@ -15,6 +18,27 @@ class ScheduleView extends StatefulWidget {
 
 class _ScheduleViewState extends State<ScheduleView> {
   final ScheduleController controller = Get.put(ScheduleController());
+  bool isLoading = true;
+  late WebViewController webController;
+
+  @override
+  void initState() {
+    super.initState();
+    webController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onProgress: (int progress) {},
+          onPageStarted: (String url) {},
+          onPageFinished: (String url) {
+            setState(() {
+              isLoading = false;
+            });
+          },
+        ),
+      )
+      ..loadRequest(Uri.parse(AppKeyStrings.webUrl));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,151 +51,166 @@ class _ScheduleViewState extends State<ScheduleView> {
             title: "Schedule",
           ),
         ),
-        body: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CustomSpacer(10),
-                _buildTextField('Medication Name', 'Enter Medication Name',
-                    controller.medicationNameController),
-                CustomSpacer(20),
-                _buildDropdown(
-                  'Amount',
-                  controller.selectedAmount.value,
-                  (newValue) {
-                    if (newValue != null) {
-                      controller.selectedAmount.value = newValue;
-                    }
-                  },
-                  ['1 pill', '2 pills', '3 pills'],
-                ),
-                CustomSpacer(20),
-                _buildDropdown(
-                  'Dose',
-                  controller.selectedDose.value,
-                  (newValue) {
-                    if (newValue != null) {
-                      controller.selectedDose.value = newValue;
-                    }
-                  },
-                  ['250 mg', '500 mg', '1000 mg'],
-                ),
-                CustomSpacer(20),
-                _buildDropdown(
-                  'Number of Times Per Day',
-                  controller.noOfTimes.value.toString(),
-                  (newValue) {
-                    if (newValue != null) {
-                      controller.noOfTimes.value = int.parse(newValue);
-                      controller.selectedTime = List.generate(
-                          controller.noOfTimes.value,
-                          (_) => TimeOfDay.now().obs);
-                      setState(() {});
-                    }
-                  },
-                  List.generate(10, (index) => (index + 1).toString()),
-                ),
-                CustomSpacer(20),
-                for (int i = 0; i < controller.noOfTimes.value; i++) ...[
-                  CustomSpacer(20),
-                  GestureDetector(
-                    onTap: () => controller.showCustomTimePicker(context, i),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 15, horizontal: 10),
-                      decoration: BoxDecoration(
-                        color: AppColors.lightGray,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Obx(() => Text(
-                            controller.selectedTime[i].value.format(context),
-                            style: TextStyle(
-                                fontSize: 16, color: AppColors.darkGray),
-                          )),
-                    ),
-                  ),
-                ],
-                CustomSpacer(20),
-                _buildDropdown(
-                  'Number of Days',
-                  controller.noOfDays.value.toString(),
-                  (newValue) {
-                    if (newValue != null) {
-                      controller.noOfDays.value = int.parse(newValue);
-                    }
-                  },
-                  List.generate(30, (index) => (index + 1).toString()),
-                ),
-                CustomSpacer(20),
-                ElevatedButton(
-                  onPressed: () => controller.addSchedule(context),
-                  child: Center(
-                    child: Text('Save Schedule'),
-                  ),
-                ),
-                CustomSpacer(20),
-                // Displaying fetched schedules
-                Obx(() {
-                  if (controller.schedules.isEmpty) {
-                    return Center(child: Text("No schedules available."));
-                  } else {
-                    return ListView.builder(
-                      shrinkWrap: true,
-                      physics: NeverScrollableScrollPhysics(),
-                      itemCount: controller.schedules.length,
-                      itemBuilder: (context, index) {
-                        final schedule = controller.schedules[index];
-                        return Card(
-                          margin: EdgeInsets.symmetric(vertical: 10),
-                          child: Padding(
-                            padding: const EdgeInsets.all(10.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  schedule.medicationName,
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                CustomSpacer(10),
-                                Text("Amount: ${schedule.selectedAmount}"),
-                                CustomSpacer(10),
-                                Text("Dose: ${schedule.selectedDose}"),
-                                CustomSpacer(10),
-                                Text("Number of Days: ${schedule.noOfDays}"),
-                                CustomSpacer(10),
-                                Text("Times:"),
-                                ...schedule.times.map((time) {
-                                  return Padding(
-                                    padding: const EdgeInsets.only(top: 5.0),
-                                    child: Text(time),
-                                  );
-                                }).toList(),
-                                CustomSpacer(10),
-                                Container(
-                                  height: 10,
-                                  width: double.infinity,
-                                  color: controller.getColor(schedule.colour),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  }
-                }),
-                CustomSpacer(100),
-              ],
+        body: Builder(builder: (context) {
+          return GlobalVariables.myRole == 'doctor'
+              ? _buildDoctorSchedule(context)
+              : _buildPatientEducation();
+        }),
+      ),
+    );
+  }
+
+  Widget _buildDoctorSchedule(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(20.0),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CustomSpacer(10),
+            _buildTextField('Patient Username', 'Enter Patient Username',
+                controller.patientUsernameController),
+            CustomSpacer(20),
+            _buildTextField('Medication Name', 'Enter Medication Name',
+                controller.medicationNameController),
+            CustomSpacer(20),
+            _buildDropdown(
+              'Amount',
+              controller.selectedAmount.value,
+              (newValue) {
+                if (newValue != null) {
+                  controller.selectedAmount.value = newValue;
+                }
+              },
+              ['1 pill', '2 pills', '3 pills'],
             ),
-          ),
+            CustomSpacer(20),
+            _buildDropdown(
+              'Dose',
+              controller.selectedDose.value,
+              (newValue) {
+                if (newValue != null) {
+                  controller.selectedDose.value = newValue;
+                }
+              },
+              ['250 mg', '500 mg', '1000 mg'],
+            ),
+            CustomSpacer(20),
+            _buildDropdown(
+              'Number of Times Per Day',
+              controller.noOfTimes.value.toString(),
+              (newValue) {
+                if (newValue != null) {
+                  controller.noOfTimes.value = int.parse(newValue);
+                  controller.selectedTime = List.generate(
+                      controller.noOfTimes.value, (_) => TimeOfDay.now().obs);
+                  setState(() {});
+                }
+              },
+              List.generate(10, (index) => (index + 1).toString()),
+            ),
+            CustomSpacer(20),
+            for (int i = 0; i < controller.noOfTimes.value; i++) ...[
+              CustomSpacer(20),
+              GestureDetector(
+                onTap: () => controller.showCustomTimePicker(context, i),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.lightGray,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Obx(() => Text(
+                        controller.selectedTime[i].value.format(context),
+                        style:
+                            TextStyle(fontSize: 16, color: AppColors.darkGray),
+                      )),
+                ),
+              ),
+            ],
+            CustomSpacer(20),
+            _buildDropdown(
+              'Number of Days',
+              controller.noOfDays.value.toString(),
+              (newValue) {
+                if (newValue != null) {
+                  controller.noOfDays.value = int.parse(newValue);
+                }
+              },
+              List.generate(30, (index) => (index + 1).toString()),
+            ),
+            CustomSpacer(20),
+            ElevatedButton(
+              onPressed: () => controller.addSchedule(context),
+              child: Center(
+                child: Text('Save Schedule'),
+              ),
+            ),
+            CustomSpacer(20),
+            Obx(() {
+              if (controller.schedules.isEmpty) {
+                return Center(child: Text("No schedules available."));
+              } else {
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  itemCount: controller.schedules.length,
+                  itemBuilder: (context, index) {
+                    final schedule = controller.schedules[index];
+                    return Card(
+                      margin: EdgeInsets.symmetric(vertical: 10),
+                      child: Padding(
+                        padding: const EdgeInsets.all(10.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              schedule.medicationName,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            CustomSpacer(10),
+                            Text("Amount: ${schedule.selectedAmount}"),
+                            CustomSpacer(10),
+                            Text("Dose: ${schedule.selectedDose}"),
+                            CustomSpacer(10),
+                            Text("Number of Days: ${schedule.noOfDays}"),
+                            CustomSpacer(10),
+                            Text("Times:"),
+                            ...schedule.times.map((time) {
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 5.0),
+                                child: Text(time),
+                              );
+                            }).toList(),
+                            CustomSpacer(10),
+                            Container(
+                              height: 10,
+                              width: double.infinity,
+                              color: controller.getColor(schedule.colour),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              }
+            }),
+            CustomSpacer(100),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _buildPatientEducation() {
+    return isLoading
+        ? Center(child: CircularProgressIndicator())
+        : WebViewWidget(controller: webController);
   }
 
   Widget _buildTextField(
@@ -206,12 +245,8 @@ class _ScheduleViewState extends State<ScheduleView> {
     );
   }
 
-  Widget _buildDropdown(
-    String label,
-    String value,
-    ValueChanged<String?> onChanged,
-    List<String> items,
-  ) {
+  Widget _buildDropdown(String label, String value,
+      ValueChanged<String?> onChanged, List<String> items) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

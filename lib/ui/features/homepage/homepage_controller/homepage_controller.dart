@@ -13,6 +13,7 @@ class HomepageController extends GetxController {
   static HomepageController get to => Get.find();
 
   RxList<Map<String, dynamic>> drugSchedules = <Map<String, dynamic>>[].obs;
+  RxList<String> patientNames = <String>[].obs;
 
   @override
   void onInit() {
@@ -26,6 +27,10 @@ class HomepageController extends GetxController {
       log.d('Database change detected');
       fetchDrugSchedules(); // Fetch drug schedules again when changes occur
     });
+
+    if (GlobalVariables.myRole == 'doctor') {
+      fetchPatientNames();
+    }
   }
 
   Future<void> fetchDrugSchedules() async {
@@ -33,11 +38,16 @@ class HomepageController extends GetxController {
       final ref = FirebaseDatabase.instance.ref('schedule/${GlobalVariables.myUsername}');
       final schedulesSnapshot = await ref.get();
 
+      // Clear existing schedules before fetching new data
+      drugSchedules.clear();
+
+      log.d('Fetching schedules for user: ${GlobalVariables.myUsername}');
+
       if (schedulesSnapshot.exists) {
         final List<Map<String, dynamic>> schedules = [];
         final dynamic snapshotValue = schedulesSnapshot.value;
 
-        log.d('SchedulesSnapshot exist: $schedules');
+        log.d('Schedules data fetched: $snapshotValue');
 
         if (snapshotValue != null && snapshotValue is Map<dynamic, dynamic>) {
           snapshotValue.forEach((key, value) {
@@ -47,10 +57,7 @@ class HomepageController extends GetxController {
           });
 
           drugSchedules.assignAll(schedules);
-          log.d('Drug schedules fetched successfully: $schedules');
-
-          // Schedule alarms for drugs that are due
-          scheduleAlarmsForDueDrugs(schedules);
+          log.d('Drug schedules assigned: $schedules');
         } else {
           log.e('Invalid data format for schedules');
         }
@@ -59,6 +66,66 @@ class HomepageController extends GetxController {
       }
     } catch (e) {
       log.e('Error fetching drug schedules: $e');
+    }
+  }
+
+
+  Future<void> fetchPatientNames() async {
+    try {
+      final ref = FirebaseDatabase.instance.ref('schedule');
+      final schedulesSnapshot = await ref.get();
+
+      if (schedulesSnapshot.exists) {
+        final List<String> names = [];
+        final dynamic snapshotValue = schedulesSnapshot.value;
+
+        if (snapshotValue != null && snapshotValue is Map<dynamic, dynamic>) {
+          snapshotValue.forEach((username, _) {
+            names.add(username as String);
+          });
+
+          patientNames.assignAll(names);
+          log.d('Patient names fetched successfully: $names');
+        } else {
+          log.e('Invalid data format for schedules');
+        }
+      } else {
+        log.e('No schedules found');
+      }
+    } catch (e) {
+      log.e('Error fetching patient names: $e');
+    }
+  }
+
+  Future<void> fetchPatients() async {
+    try {
+      // Access the users node where all users' data is stored
+      final ref = FirebaseDatabase.instance.ref('users');
+      final usersSnapshot = await ref.get();
+
+      if (usersSnapshot.exists) {
+        final List<Map<String, dynamic>> patients = [];
+        final dynamic snapshotValue = usersSnapshot.value;
+
+        if (snapshotValue != null && snapshotValue is Map<dynamic, dynamic>) {
+          snapshotValue.forEach((key, value) {
+            if (value is Map<dynamic, dynamic> && value['role'] == 'patient') {
+              // Collect patient details
+              patients.add({'username': key, ...Map<String, dynamic>.from(value)});
+            }
+          });
+
+          // Update the state with the fetched patient data
+          drugSchedules.assignAll(patients); // Assuming this is where you want to display patients
+          log.d('Patients fetched successfully: $patients');
+        } else {
+          log.e('Invalid data format for users');
+        }
+      } else {
+        log.e('No users found');
+      }
+    } catch (e) {
+      log.e('Error fetching patients: $e');
     }
   }
 
@@ -104,31 +171,34 @@ class HomepageController extends GetxController {
       final List<String> scheduledTimes = (scheduleDetails['times'] as List<dynamic>).map((e) => e.toString()).toList();
 
       for (var time in scheduledTimes) {
-        final timeComponents = time.split(' '); // Split by space for AM/PM and time
-        if (timeComponents.length == 2) {
-          final List<String> hmComponents = timeComponents[0].split(':');
-          if (hmComponents.length == 2) {
-            final int hours = int.parse(hmComponents[0]);
-            final int minutes = int.parse(hmComponents[1]);
-            final bool isPM = timeComponents[1].toLowerCase() == 'pm';
-            final int adjustedHours = (isPM && hours < 12) ? hours + 12 : (hours == 12 ? 0 : hours);
+        try {
+          final timeComponents = time.split(' ');
+          if (timeComponents.length == 2) {
+            final List<String> hmComponents = timeComponents[0].split(':');
+            if (hmComponents.length == 2) {
+              final int hours = int.parse(hmComponents[0]);
+              final int minutes = int.parse(hmComponents[1]);
+              final bool isPM = timeComponents[1].toLowerCase() == 'pm';
+              final int adjustedHours = (isPM && hours < 12) ? hours + 12 : (hours == 12 ? 0 : hours);
 
-            final DateTime scheduledTime = DateTime(now.year, now.month, now.day, adjustedHours, minutes);
+              final DateTime scheduledTime = DateTime(now.year, now.month, now.day, adjustedHours, minutes);
 
-            if (scheduledTime.isAfter(now)) {
-              // Drug is due, schedule alarm
-              await setAlarm(
-                id: scheduleDetails['id'] ?? 0, // You may need to adjust this based on your data structure
-                scheduleTime: TimeOfDay(hour: adjustedHours, minute: minutes),
-                title: 'Medication Reminder',
-                body: 'It\'s time to take ${scheduleDetails['medicationName']}',
-              );
+              if (scheduledTime.isAfter(now)) {
+                await setAlarm(
+                  id: scheduleDetails['id'] ?? 0,
+                  scheduleTime: TimeOfDay(hour: adjustedHours, minute: minutes),
+                  title: 'Medication Reminder',
+                  body: 'It\'s time to take ${scheduleDetails['medicationName']}',
+                );
+              }
+            } else {
+              log.e('Invalid time format in $time');
             }
           } else {
             log.e('Invalid time format in $time');
           }
-        } else {
-          log.e('Invalid time format in $time');
+        } catch (e) {
+          log.e('Error processing time $time: $e');
         }
       }
     }
@@ -149,7 +219,7 @@ class HomepageController extends GetxController {
       scheduleTime.minute,
     );
 
-    // Check if time schedule is past already
+    // Adjust alarm time if it's already past
     Duration difference = alarmTime.difference(DateTime.now());
     difference = difference + const Duration(minutes: 1);
 
@@ -171,7 +241,9 @@ class HomepageController extends GetxController {
 
       // Set the alarm
       await Alarm.set(alarmSettings: alarmSettings);
-      log.d("Done setting alarm for $title at ${alarmTime.toIso8601String()}");
+      log.d("Alarm set for $title at ${alarmTime.toIso8601String()}");
+    } else {
+      log.e("The alarm time $alarmTime is in the past.");
     }
   }
 }

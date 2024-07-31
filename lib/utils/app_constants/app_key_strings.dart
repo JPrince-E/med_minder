@@ -31,6 +31,7 @@ class AppKeyStrings {
   static String toponymType = 'Toponym Type';
   static String bgImageUrl =
       "https://thumbs.dreamstime.com/b/doctors-colleagues-elderly-therapist-discussing-current-disease-therapy-sitting-working-place-sunny-clinic-215119567.jpg";
+  static String webUrl = 'https://www.mayoclinic.org/about-mayo-clinic/contact';
 
   static String test = 'test';
 }

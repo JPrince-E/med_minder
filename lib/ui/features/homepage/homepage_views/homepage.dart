@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:med_minder/app/resources/app.logger.dart';
 import 'package:med_minder/ui/features/homepage/homepage_controller/homepage_controller.dart';
+import 'package:med_minder/ui/features/homepage/homepage_views/patient_schedule_view.dart';
+import 'package:med_minder/ui/shared/global_variables.dart';
 import 'package:med_minder/ui/shared/spacer.dart';
 import 'package:med_minder/utils/app_constants/app_colors.dart';
 import 'package:med_minder/utils/app_constants/app_styles.dart';
@@ -41,94 +43,129 @@ class HomepageView extends StatelessWidget {
         ),
       ),
       body: Obx(() {
-      final drugSchedules = controller.drugSchedules;
+        final drugSchedules = controller.drugSchedules;
 
-      if (drugSchedules.isEmpty) {
-        log.e('Drug Schedules: $drugSchedules');
-        return const Center(
-          child: Text("No Records!"),
-        );
-      } else {
-        log.d('Drug Schedules: $drugSchedules');
-        final now = DateTime.now();
-        final dueNow = <Map<String, dynamic>>[];
-        final upcoming = <Map<String, dynamic>>[];
+        if (GlobalVariables.myRole == 'doctor') {
+          // Render the doctor view showing patients
+          if (drugSchedules.isEmpty) {
+            log.e('Patients: $drugSchedules');
+            return const Center(
+              child: Text("No Patients!"),
+            );
+          } else {
+            return ListView.builder(
+              itemCount: drugSchedules.length,
+              itemBuilder: (context, index) {
+                final patient = drugSchedules[index];
+                final username = patient['username'] ?? 'Unknown';
+                return ListTile(
+                  title: Text(username),
+                  subtitle: Text('View Schedule'),
+                  onTap: () {
+                    // Navigate to patient's schedule
+                    Get.to(PatientScheduleView(username: username));
+                  },
+                );
+              },
+            );
+          }
+        } else if (GlobalVariables.myRole == 'patient') {
+          // Render the patient view showing their schedule
+          if (drugSchedules.isEmpty) {
+            log.e('Drug Schedules: $drugSchedules');
+            return const Center(
+              child: Text("No Records!"),
+            );
+          } else {
+            final now = DateTime.now();
+            final dueNow = <Map<String, dynamic>>[];
+            final upcoming = <Map<String, dynamic>>[];
 
-        log.d('Current Time: $now');
+            log.d('Current Time: $now');
 
-        for (var scheduleMap in drugSchedules) {
-          scheduleMap.forEach((key, scheduleDetails) {
-            log.d('Processing schedule: $scheduleDetails');
-            final List<String> scheduledTimes = (scheduleDetails['times'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+            for (var scheduleMap in drugSchedules) {
+              scheduleMap.forEach((key, scheduleDetails) {
+                // Ensure the schedule belongs to the logged-in patient
+                if (scheduleDetails['username'] == GlobalVariables.myUsername) {
+                  final medicationName = scheduleDetails['medicationName'] ?? 'No Name';
+                  final selectedAmount = scheduleDetails['selectedAmount'] ?? 'Unknown';
+                  final selectedDose = scheduleDetails['selectedDose'] ?? 'Unknown';
+                  final List<String> scheduledTimes = (scheduleDetails['times'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
 
-            for (var time in scheduledTimes) {
-              final List<String> timeComponents = time.split(' ');
-              if (timeComponents.length == 2) {
-                final List<String> hmComponents = timeComponents[0].split(':');
-                if (hmComponents.length == 2) {
-                  try {
-                    final int hours = int.parse(hmComponents[0]);
-                    final int minutes = int.parse(hmComponents[1]);
-                    final bool isPM = timeComponents[1].toLowerCase() == 'pm';
-                    final int adjustedHours = (isPM && hours < 12) ? hours + 12 : (hours == 12 ? 0 : hours);
+                  for (var time in scheduledTimes) {
+                    final List<String> timeComponents = time.split(' ');
+                    if (timeComponents.length == 2) {
+                      final List<String> hmComponents = timeComponents[0].split(':');
+                      if (hmComponents.length == 2) {
+                        try {
+                          final int hours = int.parse(hmComponents[0]);
+                          final int minutes = int.parse(hmComponents[1]);
+                          final bool isPM = timeComponents[1].toLowerCase() == 'pm';
+                          final int adjustedHours = (isPM && hours < 12) ? hours + 12 : (hours == 12 ? 0 : hours);
 
-                    final DateTime scheduledTime = DateTime(now.year, now.month, now.day, adjustedHours, minutes);
-                    final adjustedScheduledTime = scheduledTime;
+                          final DateTime scheduledTime = DateTime(now.year, now.month, now.day, adjustedHours, minutes);
+                          final adjustedScheduledTime = scheduledTime;
 
-                    log.d('Scheduled time: $adjustedScheduledTime');
-
-                    if (adjustedScheduledTime.isBefore(now)) {
-                      log.d('Adding medication to dueNow: $scheduleDetails');
-                      dueNow.add({
-                        ...scheduleDetails,
-                        'adjustedScheduledTime': adjustedScheduledTime,
-                      });
+                          if (adjustedScheduledTime.isBefore(now)) {
+                            dueNow.add({
+                              'medicationName': medicationName,
+                              'selectedAmount': selectedAmount,
+                              'selectedDose': selectedDose,
+                              'adjustedScheduledTime': adjustedScheduledTime,
+                            });
+                          } else {
+                            upcoming.add({
+                              'medicationName': medicationName,
+                              'selectedAmount': selectedAmount,
+                              'selectedDose': selectedDose,
+                              'adjustedScheduledTime': adjustedScheduledTime,
+                            });
+                          }
+                        } catch (e) {
+                          log.e('Error parsing time: $time, $e');
+                        }
+                      } else {
+                        log.e('Invalid time format: $time');
+                      }
                     } else {
-                      log.d('Adding medication to upcoming: $scheduleDetails');
-                      upcoming.add({
-                        ...scheduleDetails,
-                        'adjustedScheduledTime': adjustedScheduledTime,
-                      });
+                      log.e('Invalid time format: $time');
                     }
-                  } catch (e) {
-                    log.e('Error parsing time: $time, $e');
                   }
-                } else {
-                  log.e('Invalid time format: $time');
                 }
-              } else {
-                log.e('Invalid time format: $time');
-              }
+              });
             }
-          });
-        }
 
-        return SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(10.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (dueNow.isNotEmpty) ...[
-                  const Text(
-                    "Due Now:",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  _buildMedicationList(dueNow, true),
-                ],
-                if (upcoming.isNotEmpty) ...[
-                  const Text(
-                    "Upcoming:",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  _buildMedicationList(upcoming, false),
-                ],
-              ],
-            ),
-          ),
-        );
-      }
-    }),
+            return SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(10.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (dueNow.isNotEmpty) ...[
+                      const Text(
+                        "Due Now:",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      _buildMedicationList(dueNow, true),
+                    ],
+                    if (upcoming.isNotEmpty) ...[
+                      const Text(
+                        "Upcoming:",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      _buildMedicationList(upcoming, false),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          }
+        } else {
+          return const Center(
+            child: Text("User role not recognized!"),
+          );
+        }
+      }),
     );
   }
 
@@ -145,7 +182,7 @@ class HomepageView extends StatelessWidget {
             ),
             CustomRowSpacer(10),
             Text(
-              "Hi Prince E",
+              "Hi " + GlobalVariables.myUsername,
               style: AppStyles.regularStringStyle(18, AppColors.plainWhite),
             ),
           ],
@@ -222,31 +259,28 @@ class HomepageView extends StatelessWidget {
     );
   }
 
-  Widget _buildMedicationList(List<Map<String, dynamic>> schedules, bool isDueNow) {
-    return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: schedules.map((schedule) {
-      final medicationName = schedule['medicationName'] ?? 'No Name';
-      final selectedAmount = schedule['selectedAmount'] ?? '';
-      final selectedDose = schedule['selectedDose'] ?? '';
-      final adjustedScheduledTime = schedule['adjustedScheduledTime'] as DateTime?;
+  Widget _buildMedicationList(List<Map<String, dynamic>> medications, bool isDueNow) {
+    return ListView.builder(
+        shrinkWrap: true,
+        physics: NeverScrollableScrollPhysics(),
+    itemCount: medications.length,
+    itemBuilder: (context, index) {
+    final medication = medications[index];
+    final medicationName = medication['medicationName'] ?? 'No Name';
+    final selectedAmount = medication['selectedAmount'] ?? 'Unknown';
+    final selectedDose = medication['selectedDose'] ?? 'Unknown';
+    final adjustedScheduledTime = medication['adjustedScheduledTime'] as DateTime?;
 
-      log.d('Medication Name: $medicationName');
-      log.d('Selected Amount: $selectedAmount');
-      log.d('Selected Dose: $selectedDose');
-      log.d('Adjusted Scheduled Time: $adjustedScheduledTime');
-
-      return Card(
-          color: isDueNow ? Colors.redAccent : Colors.yellowAccent,
-        child: ListTile(
-          title: Text(medicationName),
-          subtitle: Text('Amount: $selectedAmount - Dose: $selectedDose'),
-          trailing: adjustedScheduledTime != null
-              ? Text('Time: ${DateFormat.jm().format(adjustedScheduledTime)}')
-              : const Text('Time: Not specified'),
-        ),
-      );
-        }).toList(),
+    return Card(
+    child: ListTile(
+    title: Text(medicationName),
+      subtitle: Text('Amount: $selectedAmount - Dose: $selectedDose'),
+      trailing: adjustedScheduledTime != null
+          ? Text('Time: ${DateFormat.jm().format(adjustedScheduledTime)}')
+          : const Text('Time: Not specified'),
+    ),
+    );
+    },
     );
   }
 }

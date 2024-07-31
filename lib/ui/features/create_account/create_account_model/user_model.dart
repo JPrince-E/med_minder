@@ -9,6 +9,7 @@ class UserModel {
   String? password;
   String? fullName;
   String? emergencyContact;
+  String? role; // Add this field to distinguish between patient and doctor
   String? gender;
   String? yearOfBirth;
   String? phone;
@@ -24,6 +25,7 @@ class UserModel {
     this.password,
     this.fullName,
     this.emergencyContact,
+    this.role,
     this.gender,
     this.yearOfBirth,
     this.phone,
@@ -40,6 +42,7 @@ class UserModel {
     String? password,
     String? fullName,
     String? emergencyContact,
+    String? role,
     String? gender,
     String? yearOfBirth,
     String? phone,
@@ -55,6 +58,7 @@ class UserModel {
         password: password ?? this.password,
         fullName: fullName ?? this.fullName,
         emergencyContact: emergencyContact ?? this.emergencyContact,
+        role: role ?? this.role,
         gender: gender ?? this.gender,
         yearOfBirth: yearOfBirth ?? this.yearOfBirth,
         phone: phone ?? this.phone,
@@ -67,41 +71,44 @@ class UserModel {
       );
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
-        username: json["username"],
-        password: json["password"],
-        fullName: json["full_name"],
-        emergencyContact: json["emergencyContact"],
-        gender: json["gender"],
-        yearOfBirth: json["year_of_birth"],
-        phone: json["phone"],
-        email: json["email"],
-        image: json["image"],
-        department: json["department"],
-        deviceToken: json["device_token"],
-        offPeriod: json["off_period"] == null
-            ? null
-            : OffPeriod.fromJson(json["off_period"]),
-        currentShift: json["current_shift"] == null
-            ? null
-            : CurrentShift.fromJson(json["current_shift"]),
-      );
+    username: json["username"],
+    password: json["password"],
+    fullName: json["full_name"],
+    emergencyContact: json["emergencyContact"],
+    role: json["role"], // Add this line
+    gender: json["gender"],
+    yearOfBirth: json["year_of_birth"],
+    phone: json["phone"],
+    email: json["email"],
+    image: json["image"],
+    department: json["department"],
+    deviceToken: json["device_token"],
+    offPeriod: json["off_period"] == null
+        ? null
+        : OffPeriod.fromJson(json["off_period"]),
+    currentShift: json["current_shift"] == null
+        ? null
+        : CurrentShift.fromJson(json["current_shift"]),
+  );
 
   Map<String, dynamic> toJson() => {
-        "username": username,
-        "password": password,
-        "full_name": fullName,
+    "username": username,
+    "password": password,
+    "full_name": fullName,
     "emergencyContact": emergencyContact,
-        "gender": gender,
-        "year_of_birth": yearOfBirth,
-        "phone": phone,
-        "email": email,
-        "image": image,
-        "department": department,
-        "device_token": deviceToken,
-        "off_period": offPeriod?.toJson(),
-        "current_shift": currentShift?.toJson(),
-      };
+    "role": role, // Add this line
+    "gender": gender,
+    "year_of_birth": yearOfBirth,
+    "phone": phone,
+    "email": email,
+    "image": image,
+    "department": department,
+    "device_token": deviceToken,
+    "off_period": offPeriod?.toJson(),
+    "current_shift": currentShift?.toJson(),
+  };
 }
+
 
 class CurrentShift {
   DateTime? start;
@@ -126,16 +133,16 @@ class CurrentShift {
       );
 
   factory CurrentShift.fromJson(Map<String, dynamic> json) => CurrentShift(
-        start: json["start"] == null ? null : DateTime.parse(json["start"]),
-        end: json["end"] == null ? null : DateTime.parse(json["end"]),
-        shift: json["shift"],
-      );
+    start: json["start"] == null ? null : DateTime.parse(json["start"]),
+    end: json["end"] == null ? null : DateTime.parse(json["end"]),
+    shift: json["shift"],
+  );
 
   Map<String, dynamic> toJson() => {
-        "start": start?.toIso8601String(),
-        "end": end?.toIso8601String(),
-        "shift": shift,
-      };
+    "start": start?.toIso8601String(),
+    "end": end?.toIso8601String(),
+    "shift": shift,
+  };
 }
 
 class OffPeriod {
@@ -157,12 +164,12 @@ class OffPeriod {
       );
 
   factory OffPeriod.fromJson(Map<String, dynamic> json) => OffPeriod(
-        start: json["start"] == null ? null : DateTime.parse(json["start"]),
-        end: json["end"] == null ? null : DateTime.parse(json["end"]),
-      );
+    start: json["start"] == null ? null : DateTime.parse(json["start"]),
+    end: json["end"] == null ? null : DateTime.parse(json["end"]),
+  );
 
   Map<String, dynamic> toJson() => {
-        "start": start?.toIso8601String(),
-        "end": end?.toIso8601String(),
-      };
+    "start": start?.toIso8601String(),
+    "end": end?.toIso8601String(),
+  };
 }

@@ -16,6 +16,7 @@ final log = getLogger('CreateUserController');
 class LoginController extends GetxController {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
+  final roleController = TextEditingController(); // Add this controller
 
   var isSignUp = false.obs;
   var errMessage = ''.obs;
@@ -50,8 +51,7 @@ class LoginController extends GetxController {
     final username = usernameController.text.trim();
     final password = passwordController.text.trim();
 
-    if (username.isNotEmpty && !username.contains(' ')
-        && password.isNotEmpty && !password.contains(' ')) {
+    if (_validateCredentials(username, password)) {
       log.d('Signing in user...');
       showLoading.value = true;
       errMessage.value = '';
@@ -60,6 +60,25 @@ class LoginController extends GetxController {
       errMessage.value = 'All fields must be filled, and with no spaces';
       log.d("Error message: $errMessage");
       showLoading.value = false;
+    }
+  }
+
+  bool _validateCredentials(String username, String password) {
+    return username.isNotEmpty && !username.contains(' ') &&
+        password.isNotEmpty && !password.contains(' ');
+  }
+
+  void _handleError(String message) {
+    log.d(message);
+    errMessage.value = "Error! $message";
+    showLoading.value = false;
+  }
+
+  Future<void> pickImage(ImageSource source) async {
+    final pickedFile = await ImagePicker().pickImage(
+        source: source, maxWidth: 1800, maxHeight: 1800);
+    if (pickedFile != null) {
+      imageFile.value = File(pickedFile.path);
     }
   }
 
@@ -76,8 +95,13 @@ class LoginController extends GetxController {
         showLoading.value = false;
         GlobalVariables.myUsername = usernameController.text.trim();
         GlobalVariables.myFullName = userData.fullName ?? '';
-        log.d("GlobalVariables Username: ${GlobalVariables.myUsername}");
+        GlobalVariables.myRole = userData.role ?? 'patient';
+
+        // Save username and password to SharedPreferences
         await saveSharedPrefsStringValue("myUsername", usernameController.text.trim());
+        await saveSharedPrefsStringValue("myPassword", passwordController.text.trim());
+        await saveSharedPrefsStringValue("myRole", GlobalVariables.myRole);
+
         gotoHomepage(context);
       } else {
         log.d('Password does not match.');
@@ -91,20 +115,14 @@ class LoginController extends GetxController {
     }
   }
 
-  Future<void> pickImage(ImageSource source) async {
-    final pickedFile = await ImagePicker().pickImage(source: source, maxWidth: 1800, maxHeight: 1800);
-    if (pickedFile != null) {
-      imageFile.value = File(pickedFile.path);
-    }
-  }
-
-  Future<void> signUpUser(BuildContext context) async {
+  void signUpUser(BuildContext context) async {
     log.d('Attempting to sign up user...');
 
     final username = usernameController.text.trim();
     final password = passwordController.text.trim();
+    final role = roleController.text.trim(); // Get the role from the controller
 
-    if (username.isEmpty || password.isEmpty) {
+    if (username.isEmpty || password.isEmpty || role.isEmpty) {
       errMessage.value = 'All fields must be filled out.';
       log.d('Error: $errMessage');
       return;
@@ -122,6 +140,7 @@ class LoginController extends GetxController {
     final newUser = UserModel(
       username: username,
       password: password,
+      role: role, // Use the role from the controller
     );
 
     await ref.child('users/$username').set(newUser.toJson());
@@ -129,4 +148,5 @@ class LoginController extends GetxController {
 
     attemptToSignInUser(context);
   }
+
 }

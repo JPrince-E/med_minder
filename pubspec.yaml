@@ -80,6 +80,7 @@ dependencies:
   collection:
   url_launcher:
   url_launcher_android: ^6.2.0
+  webview_flutter: ^4.8.0
 
 dev_dependencies:
   flutter_test:

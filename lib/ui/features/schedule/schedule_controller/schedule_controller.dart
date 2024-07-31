@@ -9,6 +9,7 @@ class ScheduleController extends GetxController {
   final DatabaseReference _database = FirebaseDatabase.instance.reference();
 
   final TextEditingController medicationNameController = TextEditingController();
+  final TextEditingController patientUsernameController = TextEditingController();
   RxString selectedAmount = '1 pill'.obs;
   RxString selectedDose = '250 mg'.obs;
   RxInt noOfTimes = 1.obs;
@@ -41,6 +42,7 @@ class ScheduleController extends GetxController {
   @override
   void onClose() {
     medicationNameController.dispose();
+    patientUsernameController.dispose();
     super.onClose();
   }
 
@@ -81,7 +83,12 @@ class ScheduleController extends GetxController {
     try {
       List<String> timeStrings = selectedTime.map((time) => time.value.format(context)).toList();
 
-      await _database.child('schedule/${GlobalVariables.myUsername}').push().set({
+      String username = GlobalVariables.myUsername;
+      if (GlobalVariables.myRole == 'doctor') {
+        username = patientUsernameController.text.trim();
+      }
+
+      await _database.child('schedule/$username').push().set({
         "medicationName": medicationNameController.text.trim(),
         "selectedAmount": selectedAmount.value,
         "selectedDose": selectedDose.value,
@@ -89,7 +96,6 @@ class ScheduleController extends GetxController {
         "noOfDays": noOfDays.value,
         "times": timeStrings,
         "colour": selectedColor.value,
-        // "uid": FirebaseAuth.instance.currentUser!.uid, // Uncomment if using Firebase Authentication
       }).then((_) {
         Get.snackbar("Successful", "Schedule uploaded successfully.");
       });
@@ -103,6 +109,7 @@ class ScheduleController extends GetxController {
 
   void resetFields() {
     medicationNameController.clear();
+    patientUsernameController.clear();
     selectedAmount.value = '1 pill';
     selectedDose.value = '250 mg';
     noOfTimes.value = 1;
@@ -112,7 +119,9 @@ class ScheduleController extends GetxController {
   }
 
   void fetchSchedules() {
-    _database.child('schedule/${GlobalVariables.myUsername}').onValue.listen((event) {
+    String username = GlobalVariables.myUsername;
+
+    _database.child('schedule/$username').onValue.listen((event) {
       final data = event.snapshot.value as Map<dynamic, dynamic>?;
 
       if (data != null) {

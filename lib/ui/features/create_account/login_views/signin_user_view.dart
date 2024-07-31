@@ -22,89 +22,116 @@ class SignInView extends StatelessWidget {
       onTap: () => SystemChannels.textInput.invokeMethod('TextInput.hide'),
       child: Scaffold(
         backgroundColor: AppColors.plainWhite,
-        body: Container(
-          height: size.height,
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage("assets/images/doc_bg.jpeg"),
-              fit: BoxFit.cover,
-            ),
-          ),
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.all(30),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(16),
+        body: SingleChildScrollView(
+          child: Container(
+            height: size.height,
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage("assets/images/doc_bg.jpeg"),
+                fit: BoxFit.cover,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CustomTextfield(
-                    textEditingController: controller.usernameController,
-                    labelText: 'Username',
-                    hintText: 'Enter your preferred username',
-                  ),
-                  CustomSpacer(20),
-                  CustomTextfield(
-                    textEditingController: controller.passwordController,
-                    labelText: 'Password',
-                    hintText: 'Enter your preferred password',
-                  ),
-                  CustomSpacer(20),
-                  Obx(
-                        () => Center(
-                      child: Text(
-                        controller.errMessage.value,
-                        style: const TextStyle(color: Colors.red),
+            ),
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.all(30),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CustomTextfield(
+                      textEditingController: controller.usernameController,
+                      labelText: 'Username',
+                      hintText: 'Enter your preferred username',
+                    ),
+                    CustomSpacer(20),
+                    CustomTextfield(
+                      textEditingController: controller.passwordController,
+                      labelText: 'Password',
+                      hintText: 'Enter your preferred password',
+                    ),
+                    CustomSpacer(20),
+                    if (controller.isSignUp.value)
+                      DropdownButtonFormField<String>(
+                        value: 'patient',
+                        items: [
+                          DropdownMenuItem(
+                            value: 'patient',
+                            child: Text('Patient'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'doctor',
+                            child: Text('Doctor'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          controller.roleController.text = value!;
+                        },
+                        decoration: InputDecoration(
+                          labelText: 'Select Role',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    CustomSpacer(20),
+                    Obx(
+                          () => Center(
+                        child: Text(
+                          controller.errMessage.value,
+                          style: const TextStyle(color: Colors.red),
+                        ),
                       ),
                     ),
-                  ),
-                  CustomSpacer(10),
-                  Center(
-                    child: Obx(
-                          () => controller.showLoading.value
-                          ? const CircularProgressIndicator()
-                          : CustomButton(
-                        styleBoolValue: true,
-                        height: 55,
-                        width: screenSize(context).width * 0.6,
-                        color: Colors.blue[800],
-                        child: Text(
-                          controller.isSignUp.value ? 'Sign Up' : 'Log In',
-                          style: AppStyles.regularStringStyle(
-                            18,
-                            AppColors.plainWhite,
+                    CustomSpacer(10),
+                    Center(
+                      child: Obx(
+                            () => controller.showLoading.value
+                            ? const CircularProgressIndicator()
+                            : CustomButton(
+                          styleBoolValue: true,
+                          height: 55,
+                          width: screenSize(context).width * 0.6,
+                          color: AppColors.kPrimaryColor,
+                          child: Text(
+                            controller.isSignUp.value
+                                ? 'Sign Up'
+                                : 'Log In',
+                            style: AppStyles.regularStringStyle(
+                              18,
+                              AppColors.plainWhite,
+                            ),
+                          ),
+                          onPressed: () {
+                            SystemChannels.textInput
+                                .invokeMethod('TextInput.hide');
+                            if (controller.isSignUp.value) {
+                              controller.signUpUser(context);
+                            } else {
+                              controller.attemptToSignInUser(context);
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                    CustomSpacer(20),
+                    TextButton(
+                      onPressed: controller.toggleSignUpSignIn,
+                      child: Obx(
+                            () => Text(
+                          controller.isSignUp.value
+                              ? 'Already have an account? Sign in'
+                              : 'Don\'t have an account? Sign up',
+                          style: TextStyle(
+                            color: AppColors.kPrimaryColor,
                           ),
                         ),
-                        onPressed: () {
-                          SystemChannels.textInput.invokeMethod('TextInput.hide');
-                          if (controller.isSignUp.value) {
-                            controller.signUpUser(context);
-                          } else {
-                            controller.attemptToSignInUser(context);
-                          }
-                        },
                       ),
                     ),
-                  ),
-                  CustomSpacer(20),
-                  TextButton(
-                    onPressed: controller.toggleSignUpSignIn,
-                    child: Obx(
-                          () => Text(
-                        controller.isSignUp.value
-                            ? 'Already have an account? Sign in'
-                            : 'Don\'t have an account? Sign up',
-                        style: const TextStyle(
-                          color: Colors.blue,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
