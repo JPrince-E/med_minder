@@ -9,7 +9,7 @@ import 'package:med_minder/ui/shared/spacer.dart';
 import 'package:med_minder/utils/app_constants/app_colors.dart';
 import 'package:med_minder/utils/app_constants/app_styles.dart';
 import 'package:med_minder/utils/screen_util/screen_util.dart';
-import 'package:slide_digital_clock/slide_digital_clock.dart';
+import 'package:one_clock/one_clock.dart';
 import 'package:timer_builder/timer_builder.dart';
 
 var log = getLogger('HomepageView');
@@ -87,23 +87,35 @@ class HomepageView extends StatelessWidget {
               scheduleMap.forEach((key, scheduleDetails) {
                 // Ensure the schedule belongs to the logged-in patient
                 if (scheduleDetails['username'] == GlobalVariables.myUsername) {
-                  final medicationName = scheduleDetails['medicationName'] ?? 'No Name';
-                  final selectedAmount = scheduleDetails['selectedAmount'] ?? 'Unknown';
-                  final selectedDose = scheduleDetails['selectedDose'] ?? 'Unknown';
-                  final List<String> scheduledTimes = (scheduleDetails['times'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+                  final medicationName =
+                      scheduleDetails['medicationName'] ?? 'No Name';
+                  final selectedAmount =
+                      scheduleDetails['selectedAmount'] ?? 'Unknown';
+                  final selectedDose =
+                      scheduleDetails['selectedDose'] ?? 'Unknown';
+                  final List<String> scheduledTimes =
+                      (scheduleDetails['times'] as List<dynamic>?)
+                              ?.map((e) => e.toString())
+                              .toList() ??
+                          [];
 
                   for (var time in scheduledTimes) {
                     final List<String> timeComponents = time.split(' ');
                     if (timeComponents.length == 2) {
-                      final List<String> hmComponents = timeComponents[0].split(':');
+                      final List<String> hmComponents =
+                          timeComponents[0].split(':');
                       if (hmComponents.length == 2) {
                         try {
                           final int hours = int.parse(hmComponents[0]);
                           final int minutes = int.parse(hmComponents[1]);
-                          final bool isPM = timeComponents[1].toLowerCase() == 'pm';
-                          final int adjustedHours = (isPM && hours < 12) ? hours + 12 : (hours == 12 ? 0 : hours);
+                          final bool isPM =
+                              timeComponents[1].toLowerCase() == 'pm';
+                          final int adjustedHours = (isPM && hours < 12)
+                              ? hours + 12
+                              : (hours == 12 ? 0 : hours);
 
-                          final DateTime scheduledTime = DateTime(now.year, now.month, now.day, adjustedHours, minutes);
+                          final DateTime scheduledTime = DateTime(now.year,
+                              now.month, now.day, adjustedHours, minutes);
                           final adjustedScheduledTime = scheduledTime;
 
                           if (adjustedScheduledTime.isBefore(now)) {
@@ -226,26 +238,34 @@ class HomepageView extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          DateFormat.yMMMMEEEEd().format(DateTime.now()).toString(),
+                          DateFormat.yMMMMEEEEd()
+                              .format(DateTime.now())
+                              .toString(),
                           style: TextStyle(
                             fontSize: 15,
                             color: AppColors.plainWhite,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        DigitalClock(
-                          is24HourTimeFormat: false,
-                          hourMinuteDigitTextStyle: const TextStyle(
-                            fontSize: 35,
-                            color: Colors.amber,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          showSecondsDigit: false,
-                          amPmDigitTextStyle: TextStyle(
-                            fontSize: 15,
-                            color: AppColors.plainWhite,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        // DigitalClock(
+                        //   is24HourTimeFormat: false,
+                        //   hourMinuteDigitTextStyle: const TextStyle(
+                        //     fontSize: 35,
+                        //     color: Colors.amber,
+                        //     fontWeight: FontWeight.w700,
+                        //   ),
+                        //   showSecondsDigit: false,
+                        //   amPmDigitTextStyle: TextStyle(
+                        //     fontSize: 15,
+                        //     color: AppColors.plainWhite,
+                        //     fontWeight: FontWeight.w500,
+                        //   ),
+                        // ),
+                        const DigitalClock(
+                          format: 'jm',
+                          isLive: true,
+                          showSeconds: false,
+                          digitalClockTextColor: Colors.amber,
                         ),
                       ],
                     ),
@@ -259,29 +279,30 @@ class HomepageView extends StatelessWidget {
     );
   }
 
-  Widget _buildMedicationList(List<Map<String, dynamic>> medications, bool isDueNow) {
+  Widget _buildMedicationList(
+      List<Map<String, dynamic>> medications, bool isDueNow) {
     return ListView.builder(
-        shrinkWrap: true,
-        physics: NeverScrollableScrollPhysics(),
-    itemCount: medications.length,
-    itemBuilder: (context, index) {
-    final medication = medications[index];
-    final medicationName = medication['medicationName'] ?? 'No Name';
-    final selectedAmount = medication['selectedAmount'] ?? 'Unknown';
-    final selectedDose = medication['selectedDose'] ?? 'Unknown';
-    final adjustedScheduledTime = medication['adjustedScheduledTime'] as DateTime?;
+      shrinkWrap: true,
+      physics: NeverScrollableScrollPhysics(),
+      itemCount: medications.length,
+      itemBuilder: (context, index) {
+        final medication = medications[index];
+        final medicationName = medication['medicationName'] ?? 'No Name';
+        final selectedAmount = medication['selectedAmount'] ?? 'Unknown';
+        final selectedDose = medication['selectedDose'] ?? 'Unknown';
+        final adjustedScheduledTime =
+            medication['adjustedScheduledTime'] as DateTime?;
 
-    return Card(
-    child: ListTile(
-    title: Text(medicationName),
-      subtitle: Text('Amount: $selectedAmount - Dose: $selectedDose'),
-      trailing: adjustedScheduledTime != null
-          ? Text('Time: ${DateFormat.jm().format(adjustedScheduledTime)}')
-          : const Text('Time: Not specified'),
-    ),
-    );
-    },
+        return Card(
+          child: ListTile(
+            title: Text(medicationName),
+            subtitle: Text('Amount: $selectedAmount - Dose: $selectedDose'),
+            trailing: adjustedScheduledTime != null
+                ? Text('Time: ${DateFormat.jm().format(adjustedScheduledTime)}')
+                : const Text('Time: Not specified'),
+          ),
+        );
+      },
     );
   }
 }
-
